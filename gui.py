@@ -13,7 +13,6 @@ class App:
         self.ventana.geometry("450x500")
 
         # estados
-        self.guardado = True
         self.wrap_text = False
 
         # barra de menu
@@ -23,8 +22,7 @@ class App:
         self.archivo_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Archivo", menu=self.archivo_menu)
 
-        self.archivo_menu.add_command(
-            label="Abrir", command=self.abrir_archivo)
+        self.archivo_menu.add_command(label="Abrir")
         self.archivo_menu.add_command(label="Guardar")
         self.archivo_menu.add_command(label="Cerrar")
 
@@ -54,23 +52,6 @@ class App:
             label="Pegar", command=self.pegar_texto)
 
         self.scroll_text.bind("<Button-3>", self.mostrar_menu_contextual)
-
-    def get_guardado(self):
-        """Comprueba si el archivo abierto esta guardado o no"""
-        return self.guardado
-
-    def set_guardado(self, value: bool):
-        """Cambia el valor de la variable guardado"""
-        self.guardado = value
-
-    def abrir_archivo(self):
-        """Lee un archivo y lo coloca en el scrolled text"""
-
-    def guardar_archivo(self):
-        """Guarda el archivo"""
-
-    def cerrar_archivo(self):
-        """Cierra el archivo"""
 
     def mostrar_menu_contextual(self, event):
         """Muestra el menu contextual"""
@@ -106,13 +87,3 @@ class App:
     def iniciar(self):
         """Inicia el programa"""
         self.ventana.mainloop()
-
-
-def main():
-    """Main del archivo"""
-    app = App()
-    app.iniciar()
-
-
-if __name__ == "__main__":
-    main()
