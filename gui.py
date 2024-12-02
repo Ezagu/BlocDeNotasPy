@@ -14,6 +14,7 @@ class App:
         self.ventana.title("Sin título")
         self.ventana.geometry("450x500")
         self.ventana_emergente = None
+        self.ventana.option_add("*Font", "Arial 10")
 
         # estados
         self.wrap_text = False
@@ -42,16 +43,24 @@ class App:
         self.archivo_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Archivo", menu=self.archivo_menu)
 
+        self.archivo_menu.add_command(label="Nuevo", command=self.nuevo_archivo)
         self.archivo_menu.add_command(label="Abrir", command=self.abrir_archivo)
         self.archivo_menu.add_command(label="Guardar", command=self.guardar_archivo)
         self.archivo_menu.add_command(label="Guardar Como", command=self.guardar_archivo_como)
+        self.archivo_menu.add_separator()
         self.archivo_menu.add_command(label="Cerrar", command=self.cerrar_archivo)
 
         self.edicion_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Edición", menu=self.edicion_menu)
 
-        self.edicion_menu.add_command(
-            label="Ajustar texto", command=self.toggle_wrap)
+        self.edicion_menu.add_command(label="Copiar", command=self.copiar_texto)
+        self.edicion_menu.add_command(label="Cortar", command=self.cortar_texto)
+        self.edicion_menu.add_command(label="Pegar", command=self.pegar_texto)
+
+        self.ver_menu = tk.Menu(self.ventana, tearoff=0)
+        self.barra_menu.add_cascade(label="Ver", menu=self.ver_menu)
+
+        self.ver_menu.add_command(label="Ajustar texto", command=self.toggle_wrap)
 
         # menu contextual
         self.menu_contextual = tk.Menu(self.ventana, tearoff=0)
@@ -84,7 +93,7 @@ class App:
         """Alterna entre ajustar y desajustar el texto"""
         self.scroll_text.config(wrap="none" if self.wrap_text else "word")
         self.wrap_text = not self.wrap_text
-        self.edicion_menu.entryconfig(
+        self.ver_menu.entryconfig(
             0, label="Ajustar texto" if not self.wrap_text else "Desajustar texto")
         self.toggle_scrollbar_horizontal()
 
@@ -95,20 +104,40 @@ class App:
         else:
             self.scrollbar_horizontal.pack(side="bottom", fill="x")
 
-    def show_archivo_no_guardado(self):
+    def mostrar_ventana_emergente(self):
         """Crea ventana emergente de que el archivo no fue guardado"""
         self.ventana_emergente = tk.Toplevel(self.ventana)
         self.ventana_emergente.title("Archivo sin guardar")
-        self.ventana_emergente.geometry("300x150")
+        self.ventana_emergente.resizable(False, False)
 
-        label = tk.Label(self.ventana_emergente, text="Archivo no guardado")
-        label.pack()
-        boton_guardar = tk.Button(self.ventana_emergente,text="Guardar" ,command=self.guardar_archivo)
-        boton_no_guardar = tk.Button(self.ventana_emergente,text="No guardar" ,command=self.realizar_operacion)
-        boton_cancelar = tk.Button(self.ventana_emergente, text="Cancelar", command=self.cerrar_ventana_emergente)
-        boton_guardar.pack()
-        boton_no_guardar.pack()
-        boton_cancelar.pack()
+        label = tk.Label(self.ventana_emergente, text=f"¿Quieres guardar los cambios de \"{self.gestor_archivos.get_nombre()}\"?")
+        label.pack(pady=10,padx=15)
+
+        frame = tk.Frame(self.ventana_emergente) 
+
+        boton_guardar = tk.Button(frame,text="Guardar" ,command=self.guardar_archivo)
+        boton_no_guardar = tk.Button(frame,text="No guardar" ,command=self.realizar_operacion)
+        boton_cancelar = tk.Button(frame, text="Cancelar", command=self.cerrar_ventana_emergente)
+        boton_guardar.pack(side=tk.LEFT,padx=5)
+        boton_no_guardar.pack(side=tk.LEFT,padx=5)
+        boton_cancelar.pack(side=tk.LEFT,padx=5)
+        frame.pack(pady=10)
+
+        #Calcular para que la ventana emergente salga justo en el medio de la ventana principal
+        width_ventana = self.ventana.winfo_width()
+        height_ventana = self.ventana.winfo_height()
+        coordx_ventana = self.ventana.winfo_x()
+        coordy_ventana = self.ventana.winfo_y()
+
+        self.ventana_emergente.wait_visibility() #Espera que el toplevel sea visible para tomar sus medidas
+
+        width_emergente = self.ventana_emergente.winfo_width()
+        height_emergente = self.ventana_emergente.winfo_height()
+
+        pos_x = coordx_ventana + (width_ventana // 2) - (width_emergente//2)
+        pos_y = coordy_ventana + (height_ventana // 2) - (height_emergente//2)
+
+        self.ventana_emergente.geometry(f"+{pos_x}+{pos_y}")
 
     def cerrar_ventana_emergente(self):
         """Cierra la ventana emergente"""
@@ -124,16 +153,20 @@ class App:
         self.ventana.title(nombre)
 
     def realizar_operacion(self):
-        print("Realizando operacion")
+        """Realiza una operacion pedida anteriormente"""
         print(self.operacion)
         self.cerrar_ventana_emergente()
         if self.operacion == Operacion.ABRIR:
-            print("Operacion abrir")
-            self.borrar_texto()
-            self.gestor_archivos.abrir()
-            self.scroll_text.insert(1.0, self.gestor_archivos.get_texto())
+            if self.gestor_archivos.abrir():
+                self.borrar_texto()
+                self.scroll_text.insert(1.0, self.gestor_archivos.get_texto())
+                self.actualizar_nombre()
         elif self.operacion == Operacion.CERRAR:
             self.ventana.destroy()        
+        elif self.operacion == Operacion.NUEVO:
+            self.gestor_archivos.nuevo()
+            self.borrar_texto()
+            self.actualizar_nombre()
 
     def abrir_archivo(self):
         """Abre el archivo si esta guardado, sino abre la ventana emergente"""
@@ -141,21 +174,30 @@ class App:
             self.borrar_texto()
             self.gestor_archivos.abrir()
             self.scroll_text.insert(1.0, self.gestor_archivos.get_texto())
+            self.actualizar_nombre()
         else:
             self.operacion = Operacion.ABRIR
-            self.show_archivo_no_guardado()
+            self.mostrar_ventana_emergente()
 
     def guardar_archivo(self):
         """Guarda el archivo"""
-        self.gestor_archivos.set_texto(self.scroll_text.get(1.0, tk.END)[:-1])
-        if self.gestor_archivos.guardar():
-            self.realizar_operacion()
+        if self.gestor_archivos.guardar(self.scroll_text.get(1.0, tk.END)[:-1]):
+            self.realizar_operacion() #Si se guarda, realiza una operacion si fue pedida antes
 
     def guardar_archivo_como(self):
         """Guarda el archivo como"""
-        self.gestor_archivos.set_texto(self.scroll_text.get(1.0, tk.END)[:-1])
-        if self.gestor_archivos.guardar_como():
-            self.realizar_operacion()
+        if self.gestor_archivos.guardar_como(self.scroll_text.get(1.0, tk.END)[:-1]):
+            self.realizar_operacion() #Si se guarda, realiza una operacion si fue pedida antes
+
+    def nuevo_archivo(self):
+        """Si esta guardado abre un archivo nuevo"""
+        if self.gestor_archivos.is_guardado(self.scroll_text.get(1.0, tk.END)[:-1]):
+            self.gestor_archivos.nuevo()
+            self.borrar_texto()
+            self.actualizar_nombre()
+        else:
+            self.operacion = Operacion.NUEVO
+            self.mostrar_ventana_emergente()
 
     def cerrar_archivo(self):
         """Si el archivo esta guardado cierra la aplicación"""
@@ -163,7 +205,11 @@ class App:
             self.ventana.destroy()
         else:
             self.operacion = Operacion.CERRAR
-            self.show_archivo_no_guardado()
+            self.mostrar_ventana_emergente()
+
+    def actualizar_nombre(self):
+        """Actualiza el nombre de la ventana con el nombre del archivo"""
+        self.ventana.title(self.gestor_archivos.get_nombre())
 
     def iniciar(self):
         """Inicia el programa"""
