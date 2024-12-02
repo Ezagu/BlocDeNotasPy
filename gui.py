@@ -1,8 +1,9 @@
 """Bloc de notas"""
 
-from archivos import *
+from archivos import Archivos
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
+from operacion import Operacion
 
 
 class App:
@@ -12,20 +13,20 @@ class App:
         self.ventana = tk.Tk()
         self.ventana.title("Sin título")
         self.ventana.geometry("450x500")
+        self.ventana_emergente = None
 
         # estados
         self.wrap_text = False
         self.archivo_guardado:bool = True
+        self.operacion : Operacion = None
 
         #archivos
-        self.path_actual = None
-        self.nombre_del_archivo = None
+        self.gestor_archivos = Archivos()
 
         # scrolltext
         self.scroll_text = ScrolledText(
             self.ventana, padx=5, pady=5, wrap="none")
         self.scroll_text.pack(expand=True, fill="both")
-        self.scroll_text.bind("<<Modified>>", self.guardado_false)
 
         # scrollbar
         self.scrollbar_horizontal = tk.Scrollbar(
@@ -44,7 +45,7 @@ class App:
         self.archivo_menu.add_command(label="Abrir", command=self.abrir_archivo)
         self.archivo_menu.add_command(label="Guardar", command=self.guardar_archivo)
         self.archivo_menu.add_command(label="Guardar Como", command=self.guardar_archivo_como)
-        self.archivo_menu.add_command(label="Cerrar", command=self.cerrar)
+        self.archivo_menu.add_command(label="Cerrar", command=self.cerrar_archivo)
 
         self.edicion_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Edición", menu=self.edicion_menu)
@@ -96,107 +97,24 @@ class App:
 
     def show_archivo_no_guardado(self):
         """Crea ventana emergente de que el archivo no fue guardado"""
-        ventana_emergente = tk.Toplevel(self.ventana)
-        ventana_emergente.title("Archivo sin guardar")
-        ventana_emergente.geometry("300x150")
+        self.ventana_emergente = tk.Toplevel(self.ventana)
+        self.ventana_emergente.title("Archivo sin guardar")
+        self.ventana_emergente.geometry("300x150")
 
-        label = tk.Label(ventana_emergente, text="Archivo no guardado")
+        label = tk.Label(self.ventana_emergente, text="Archivo no guardado")
         label.pack()
-        boton_guardar = tk.Button(ventana_emergente,text="Guardar" ,command=self.guardar_archivo_y_abrir)
-        boton_no_guardar = tk.Button(ventana_emergente,text="No guardar" ,command=self.abrir_archivo)
-        boton_cancelar = tk.Button(ventana_emergente, text="Cancelar", command=lambda : cerrar_ventana(ventana_emergente))
+        boton_guardar = tk.Button(self.ventana_emergente,text="Guardar" ,command=self.guardar_archivo)
+        boton_no_guardar = tk.Button(self.ventana_emergente,text="No guardar" ,command=self.realizar_operacion)
+        boton_cancelar = tk.Button(self.ventana_emergente, text="Cancelar", command=self.cerrar_ventana_emergente)
         boton_guardar.pack()
         boton_no_guardar.pack()
         boton_cancelar.pack()
 
-        def cerrar_ventana(ventana):
-            ventana.destroy()
-
-    def abrir_archivo(self):
-        """Abre un archivo"""
-        if not self.archivo_guardado:
-            self.show_archivo_no_guardado()
-        else:
-            file_path = filedialog.askopenfilename(filetypes=[("Todos los archivos", "*.*"), ("Archivos de texto (.txt)", "*.txt")])
-            if file_path:
-                with open(file_path,"r", encoding="utf-8") as file:
-                    contenido = file.read()
-                    self.borrar_texto()
-                    self.scroll_text.insert(1.0,contenido)
-                    self.path_actual = file_path
-                    self.scroll_text.edit_modified(False)
-                    self.archivo_guardado = True  
-                    self.set_nombre_ventana(self.get_nombre_archivo())        
-
-    def guardar_archivo_y_abrir(self):
-        """Guarda el archivo y si es guardado abre otro archivo"""
-        if self.guardar_archivo():
-            print("Se guardo el archivo")
-            self.abrir_archivo()
-        else:
-            print("No se guardo el archivo")
-    
-    def no_guardar_y_abrir(self):
-        """Borra el texto y abre un archivo"""
-        self.borrar_texto()
-        self.abrir_archivo()
-        
-    def guardar_archivo(self):
-        """Guarda el archivo, si no se sabe el destino se guarda como, devuelve True si se guarda y False si no se guarda"""
-        if not self.path_actual:
-            #Si no se sabe el destino se guarda como
-            return self.guardar_archivo_como()
-        else:
-            #Si se sabe el destino se guarda directamente
-            contenido = self.scroll_text.get(1.0,tk.END)
-            with open(self.path_actual, "w", encoding="utf-8") as file:
-                file.write(contenido)
-                file.close()
-                self.archivo_guardado = True
-                self.scroll_text.edit_modified(False)
-                self.set_nombre_ventana(self.get_nombre_archivo())
-                return True
-
-    def guardar_archivo_como(self):
-        """Guarda el archivo, devuelve True si se guardó y False si no se guardó"""
-        contenido = self.scroll_text.get(1.0,tk.END)
-        file_path = filedialog.asksaveasfilename(filetypes=[("Archivo de texto (.txt)", "*.txt"), ("Todos los archivos", "*.*")])
-        if file_path:
-            #Si se seleccionó un path correcto
-            with open(file_path, "w", encoding="utf-8") as file:
-                #Guarda el archivo
-                file.write(contenido)
-                file.close()
-                self.path_actual = file_path
-                self.archivo_guardado = True
-                self.scroll_text.edit_modified(False)
-                self.set_nombre_ventana(self.get_nombre_archivo())
-                return True
-        else:
-            return False
-
-    def guardado_false(self, event):
-        """Indica que no se guardo el archivo"""
-        print("Texto modificado")
-        self.scroll_text.edit_modified(False)
-        self.archivo_guardado = False
-        self.set_nombre_ventana(self.get_nombre_archivo() + "*")
-
-    def get_nombre_archivo(self):
-        """Devuelve el nombre del archivo, default -> Sin título"""
-        if self.path_actual:
-            nombres = self.path_actual.split('/')
-            return nombres[len(nombres) - 1]
-        else:
-            return "Sin título"
-
-    def cerrar(self):
-        """Si el archivo esta guardado cierra la app"""
-        if not self.archivo_guardado:
-            self.show_archivo_no_guardado()
-        else:
-            self.ventana.destroy()
-            
+    def cerrar_ventana_emergente(self):
+        """Cierra la ventana emergente"""
+        if self.ventana_emergente:
+            self.ventana_emergente.destroy()
+  
     def borrar_texto(self):
         """Borra el texto"""
         self.scroll_text.delete(1.0,tk.END)
@@ -204,6 +122,48 @@ class App:
     def set_nombre_ventana(self, nombre):
         """Cambia el nombre de la ventana principal"""
         self.ventana.title(nombre)
+
+    def realizar_operacion(self):
+        print("Realizando operacion")
+        print(self.operacion)
+        self.cerrar_ventana_emergente()
+        if self.operacion == Operacion.ABRIR:
+            print("Operacion abrir")
+            self.borrar_texto()
+            self.gestor_archivos.abrir()
+            self.scroll_text.insert(1.0, self.gestor_archivos.get_texto())
+        elif self.operacion == Operacion.CERRAR:
+            self.ventana.destroy()        
+
+    def abrir_archivo(self):
+        """Abre el archivo si esta guardado, sino abre la ventana emergente"""
+        if self.gestor_archivos.is_guardado(self.scroll_text.get(1.0, tk.END)[:-1]): #Elimina el ultimo caracter porque siempre pone un salto de linea
+            self.borrar_texto()
+            self.gestor_archivos.abrir()
+            self.scroll_text.insert(1.0, self.gestor_archivos.get_texto())
+        else:
+            self.operacion = Operacion.ABRIR
+            self.show_archivo_no_guardado()
+
+    def guardar_archivo(self):
+        """Guarda el archivo"""
+        self.gestor_archivos.set_texto(self.scroll_text.get(1.0, tk.END)[:-1])
+        if self.gestor_archivos.guardar():
+            self.realizar_operacion()
+
+    def guardar_archivo_como(self):
+        """Guarda el archivo como"""
+        self.gestor_archivos.set_texto(self.scroll_text.get(1.0, tk.END)[:-1])
+        if self.gestor_archivos.guardar_como():
+            self.realizar_operacion()
+
+    def cerrar_archivo(self):
+        """Si el archivo esta guardado cierra la aplicación"""
+        if self.gestor_archivos.is_guardado(self.scroll_text.get(1.0,tk.END)[:-1]):
+            self.ventana.destroy()
+        else:
+            self.operacion = Operacion.CERRAR
+            self.show_archivo_no_guardado()
 
     def iniciar(self):
         """Inicia el programa"""

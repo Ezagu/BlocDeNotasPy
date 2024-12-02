@@ -1,7 +1,6 @@
 from enum import Enum
 
 class Operacion(Enum):
-    GUARDAR = 1
-    ABRIR = 2
-    NUEVO = 3
-    CERRAR = 4
+    ABRIR = 1
+    NUEVO = 2
+    CERRAR = 3
