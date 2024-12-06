@@ -43,19 +43,25 @@ class App:
         self.archivo_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Archivo", menu=self.archivo_menu)
 
-        self.archivo_menu.add_command(label="Nuevo", command=self.nuevo_archivo)
-        self.archivo_menu.add_command(label="Abrir", command=self.abrir_archivo)
-        self.archivo_menu.add_command(label="Guardar", command=self.guardar_archivo)
-        self.archivo_menu.add_command(label="Guardar Como", command=self.guardar_archivo_como)
+        self.archivo_menu.add_command(label="Nuevo", command=self.nuevo_archivo, accelerator="Control+N")
+        self.archivo_menu.add_command(label="Abrir", command=self.abrir_archivo, accelerator="Control+A")
+        self.archivo_menu.add_command(label="Guardar", command=self.guardar_archivo, accelerator="Control+S")
+        self.archivo_menu.add_command(label="Guardar Como", command=self.guardar_archivo_como, accelerator="Control+G")
         self.archivo_menu.add_separator()
-        self.archivo_menu.add_command(label="Cerrar", command=self.cerrar_archivo)
+        self.archivo_menu.add_command(label="Cerrar", command=self.cerrar_archivo, accelerator="Control+W")
+
+        self.ventana.bind("<Control-n>", self.nuevo_archivo)
+        self.ventana.bind("<Control-a>", self.abrir_archivo)
+        self.ventana.bind("<Control-g>", self.guardar_archivo_como)
+        self.ventana.bind("<Control-s>", self.guardar_archivo)
+        self.ventana.bind("<Control-w>", self.cerrar_archivo)
 
         self.edicion_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Edición", menu=self.edicion_menu)
 
-        self.edicion_menu.add_command(label="Copiar", command=self.copiar_texto)
-        self.edicion_menu.add_command(label="Cortar", command=self.cortar_texto)
-        self.edicion_menu.add_command(label="Pegar", command=self.pegar_texto)
+        self.edicion_menu.add_command(label="Copiar", command=self.copiar_texto, accelerator="Ctrl+C")
+        self.edicion_menu.add_command(label="Cortar", command=self.cortar_texto, accelerator="Ctrl+X")
+        self.edicion_menu.add_command(label="Pegar", command=self.pegar_texto, accelerator="Ctrl+V")
 
         self.ver_menu = tk.Menu(self.ventana, tearoff=0)
         self.barra_menu.add_cascade(label="Ver", menu=self.ver_menu)
@@ -168,7 +174,7 @@ class App:
             self.borrar_texto()
             self.actualizar_nombre()
 
-    def abrir_archivo(self):
+    def abrir_archivo(self, event=None):
         """Abre el archivo si esta guardado, sino abre la ventana emergente"""
         if self.gestor_archivos.is_guardado(self.scroll_text.get(1.0, tk.END)[:-1]): #Elimina el ultimo caracter porque siempre pone un salto de linea
             self.borrar_texto()
@@ -179,17 +185,19 @@ class App:
             self.operacion = Operacion.ABRIR
             self.mostrar_ventana_emergente()
 
-    def guardar_archivo(self):
+    def guardar_archivo(self, event=None):
         """Guarda el archivo"""
         if self.gestor_archivos.guardar(self.scroll_text.get(1.0, tk.END)[:-1]):
+            self.actualizar_nombre()
             self.realizar_operacion() #Si se guarda, realiza una operacion si fue pedida antes
 
-    def guardar_archivo_como(self):
+    def guardar_archivo_como(self, event=None):
         """Guarda el archivo como"""
         if self.gestor_archivos.guardar_como(self.scroll_text.get(1.0, tk.END)[:-1]):
+            self.actualizar_nombre()
             self.realizar_operacion() #Si se guarda, realiza una operacion si fue pedida antes
 
-    def nuevo_archivo(self):
+    def nuevo_archivo(self, event=None):
         """Si esta guardado abre un archivo nuevo"""
         if self.gestor_archivos.is_guardado(self.scroll_text.get(1.0, tk.END)[:-1]):
             self.gestor_archivos.nuevo()
@@ -199,7 +207,7 @@ class App:
             self.operacion = Operacion.NUEVO
             self.mostrar_ventana_emergente()
 
-    def cerrar_archivo(self):
+    def cerrar_archivo(self, event=None):
         """Si el archivo esta guardado cierra la aplicación"""
         if self.gestor_archivos.is_guardado(self.scroll_text.get(1.0,tk.END)[:-1]):
             self.ventana.destroy()
